@@ -21,9 +21,11 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Clone and build OpenClaw
+# Clone and build OpenClaw - always fetch latest from main branch
 ARG OPENCLAW_VERSION=main
-RUN git clone --depth 1 --branch ${OPENCLAW_VERSION} https://github.com/openclaw/openclaw.git .
+RUN git clone --depth 1 --branch ${OPENCLAW_VERSION} https://github.com/openclaw/openclaw.git . && \
+    echo "Building OpenClaw from branch: ${OPENCLAW_VERSION}" && \
+    git rev-parse HEAD > /app/openclaw-commit.txt
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile

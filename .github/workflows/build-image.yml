@@ -20,8 +20,8 @@ on:
       - 'Dockerfile'
       - '.github/workflows/build-image.yml'
   schedule:
-    # Build weekly on Sundays at 00:00 UTC to get latest OpenClaw updates
-    - cron: '0 0 * * 0'
+    # Build daily at 00:00 UTC to get latest OpenClaw updates
+    - cron: '0 0 * * *'
 
 env:
   REGISTRY: ghcr.io

@@ -2,6 +2,8 @@
 
 Pre-built Docker image for [OpenClaw](https://github.com/openclaw/openclaw) — run your AI assistant in seconds without building from source.
 
+> 🔄 **Always Up-to-Date:** This image automatically builds daily and checks for new OpenClaw releases every 6 hours, ensuring you always have the latest version.
+
 ## One-Line Install (Recommended)
 
 ### Linux / macOS
@@ -114,9 +116,11 @@ Config is stored in `~/.openclaw/` and persists across container restarts.
 
 | Tag | Description |
 |-----|-------------|
-| `latest` | Latest stable release |
-| `vX.Y.Z` | Specific version |
-| `main` | Latest from main branch (may be unstable) |
+| `latest` | Latest OpenClaw build (updated daily and on new releases) |
+| `vX.Y.Z` | Specific version (if available) |
+| `main` | Latest from main branch (cutting edge) |
+
+> **Note:** The `latest` tag is automatically rebuilt daily at 00:00 UTC and whenever OpenClaw releases a new version.
 
 ## Volumes
 
