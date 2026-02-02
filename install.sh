@@ -152,16 +152,17 @@ fi
 
 # Check Docker is running
 if ! docker info &> /dev/null; then
-    log_error "Docker is not running"
-    echo -e "\n${RED}Please start Docker and try again.${NC}"
+    log_error "Docker is not running or you don't have permission to access it"
     
     # Check if it's a permission issue
-    if [ "$(id -u)" -ne 0 ] && docker info 2>&1 | grep -q "permission denied"; then
-        echo -e "${YELLOW}Tip: You may need to run this script with sudo or add your user to the docker group:${NC}"
-        echo -e "  sudo usermod -aG docker \$USER"
-        echo -e "  (then log out and log back in)"
+    if [ "$(id -u)" -ne 0 ] && docker info 2>&1 | grep -qi "permission denied"; then
+        echo -e "\n${YELLOW}Tip: You may need to run this script with sudo or add your user to the docker group:${NC}"
+        echo -e "  ${CYAN}sudo usermod -aG docker \$USER${NC}"
+        echo -e "  ${CYAN}(then log out and log back in)${NC}"
         echo -e "\n${YELLOW}Or run the installer with sudo:${NC}"
-        echo -e "  sudo bash <(curl -fsSL https://raw.githubusercontent.com/phioranex/openclaw-docker/main/install.sh)"
+        echo -e "  ${CYAN}sudo bash <(curl -fsSL https://raw.githubusercontent.com/phioranex/openclaw-docker/main/install.sh)${NC}"
+    else
+        echo -e "\n${RED}Please start Docker and try again.${NC}"
     fi
     exit 1
 fi
@@ -183,28 +184,67 @@ log_success "Created $INSTALL_DIR"
 
 log_step "Downloading docker-compose.yml..."
 curl -fsSL "$COMPOSE_URL" -o docker-compose.yml
+
+# Update docker-compose.yml to use correct home directory when running with sudo
+if [ -n "$SUDO_USER" ]; then
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    if [ -z "$USER_HOME" ]; then
+        # Fallback to eval if getent fails
+        USER_HOME=$(eval echo ~"$SUDO_USER")
+    fi
+    # Replace ~/.openclaw with the actual user's home directory
+    sed -i.bak "s|~/.openclaw|$USER_HOME/.openclaw|g" docker-compose.yml
+    rm -f docker-compose.yml.bak
+    log_success "Updated docker-compose.yml for sudo user"
+fi
+
 log_success "Downloaded docker-compose.yml"
 
 log_step "Creating data directories..."
-mkdir -p ~/.openclaw
-mkdir -p ~/.openclaw/workspace
+
+# Determine the correct home directory
+if [ -n "$SUDO_USER" ]; then
+    # Running with sudo - use the actual user's home
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    if [ -z "$USER_HOME" ]; then
+        # Fallback to eval if getent fails
+        USER_HOME=$(eval echo ~"$SUDO_USER")
+    fi
+    OPENCLAW_DIR="$USER_HOME/.openclaw"
+else
+    # Running normally
+    OPENCLAW_DIR="$HOME/.openclaw"
+fi
+
+mkdir -p "$OPENCLAW_DIR"
+mkdir -p "$OPENCLAW_DIR/workspace"
 
 # Fix permissions for container access
 # Docker container runs as node user (UID 1000, GID 1000)
 # Ensure the directory is writable by the container user
 if [ "$(id -u)" -eq 0 ]; then
     # Running as root - set ownership to UID 1000 (node user in container)
-    chown -R 1000:1000 ~/.openclaw
+    chown -R 1000:1000 "$OPENCLAW_DIR"
     log_success "Set ownership to UID 1000 (container user)"
+    
+    # If running with sudo, also change ownership to the sudo user for easier access
+    if [ -n "$SUDO_USER" ]; then
+        # Set group ownership to the sudo user's primary group as well
+        SUDO_GID=$(id -g "$SUDO_USER")
+        chown -R 1000:"$SUDO_GID" "$OPENCLAW_DIR"
+        # Allow group write access
+        chmod -R g+w "$OPENCLAW_DIR"
+        log_success "Granted access to user $SUDO_USER (group ownership)"
+    fi
 else
     # Running as non-root user - ensure world-writable permissions for Synology/NAS compatibility
-    chmod -R 777 ~/.openclaw
+    chmod -R 777 "$OPENCLAW_DIR"
     log_warning "Running as non-root user, set permissions to 777"
     log_warning "For better security on Synology/NAS, consider running with sudo"
 fi
 
-log_success "Created ~/.openclaw (config)"
-log_success "Created ~/.openclaw/workspace (workspace)"
+log_success "Created $OPENCLAW_DIR (config)"
+log_success "Created $OPENCLAW_DIR/workspace (workspace)"
 
 log_step "Pulling OpenClaw image..."
 docker pull "$IMAGE"

@@ -152,7 +152,10 @@ If you encounter `EACCES: permission denied` errors when running on Synology NAS
    ```bash
    sudo bash <(curl -fsSL https://raw.githubusercontent.com/phioranex/openclaw-docker/main/install.sh)
    ```
-   The script will automatically set proper ownership (UID 1000) for the container user.
+   The script will automatically:
+   - Set proper ownership (UID 1000) for the container user
+   - Configure your user account to access the files
+   - Update docker-compose.yml to use the correct home directory
 
 2. **Option 2: Fix permissions manually**
    ```bash
